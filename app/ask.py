@@ -11,6 +11,7 @@
 """
 
 import argparse
+import time
 
 from google import genai
 from google.genai import errors
@@ -21,25 +22,68 @@ from app.config import MODEL, api_error_message, get_api_key
 DEFAULT_QUESTION = "AIE2026の講座の宿題にある「3レベル」とは何ですか？"
 
 
+def _print_usage(response) -> None:
+    if response.usage_metadata is not None:
+        print(
+            f"[tokens] 入力: {response.usage_metadata.prompt_token_count}, "
+            f"出力: {response.usage_metadata.candidates_token_count}"
+        )
+
+
 def ask(question: str) -> str:
     client = genai.Client(api_key=get_api_key())
+    start = time.perf_counter()
     response = client.models.generate_content(model=MODEL, contents=question)
+    elapsed = time.perf_counter() - start
 
     # TODO(第1回 演習): response.usage_metadata から
     #   入力トークン数と出力トークン数を表示してみよう（Copilotに頼んでよい）
+    _print_usage(response)
+    print(f"[time] {elapsed:.2f}秒")
 
     return response.text
+
+
+def chat_loop() -> None:
+    """会話履歴を保持しながら連続して質問する対話モード。"""
+    client = genai.Client(api_key=get_api_key())
+    chat = client.chats.create(model=MODEL)
+    print("対話モードを開始します（終了するには exit / quit または Ctrl+C / Ctrl+D）")
+
+    while True:
+        try:
+            user_input = input("\n[質問] ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n終了します。")
+            break
+
+        if not user_input:
+            continue
+        if user_input.lower() in ("exit", "quit"):
+            print("終了します。")
+            break
+
+        start = time.perf_counter()
+        response = chat.send_message(user_input)
+        elapsed = time.perf_counter() - start
+        _print_usage(response)
+        print(f"[time] {elapsed:.2f}秒")
+        print(response.text)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="素のLLMに質問する")
     parser.add_argument("question", nargs="?", default=DEFAULT_QUESTION)
+    parser.add_argument("--chat", action="store_true", help="会話履歴を保持して連続質問する対話モード")
     args = parser.parse_args()
 
     print(f"[model] {MODEL}")
-    print(f"[質問] {args.question}\n")
     try:
-        print(ask(args.question))
+        if args.chat:
+            chat_loop()
+        else:
+            print(f"[質問] {args.question}\n")
+            print(ask(args.question))
     except errors.APIError as e:
         print(api_error_message(e.code, e.message))
         raise SystemExit(1)
