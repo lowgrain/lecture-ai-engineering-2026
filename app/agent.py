@@ -41,8 +41,7 @@ INSTRUCTIONS = """\
 agent = Agent(instructions=INSTRUCTIONS)
 agent.tool_plain(tools.search_glossary)
 agent.tool_plain(tools.get_lecture_summary)
-
-# TODO(第3回 演習): tools.py に make_quiz を作り、ここで登録しよう
+agent.tool_plain(tools.make_quiz)
 
 # 第5回: 使う MCP サーバーの設定ファイル。Claude Desktop や Cursor と同じ "mcpServers" 形式
 MCP_CONFIG = Path(__file__).resolve().parent / "mcp_servers.json"
@@ -66,7 +65,9 @@ def load_mcp_servers(config_path: Path = MCP_CONFIG) -> list[MCPToolset]:
         if "url" in spec:
             transport = spec["url"]
         else:
-            transport = StdioTransport(spec["command"], spec.get("args", []), env=spec.get("env"))
+            transport = StdioTransport(
+                spec["command"], spec.get("args", []), env=spec.get("env")
+            )
         toolsets.append(MCPToolset(Client(transport, mode="legacy")).prefixed(name))
     return toolsets
 
@@ -113,8 +114,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="学習支援エージェントに質問する")
     parser.add_argument("question", nargs="?")
     parser.add_argument("--trace", action="store_true", help="ツール呼び出しを表示する")
-    parser.add_argument("--mcp", action="store_true", help="第5回: ツールを MCP サーバー（app/mcp_servers.json）から受け取る")
-    parser.add_argument("--list-tools", action="store_true", help="モデルに見えるツール一覧を表示して終了する（APIキー不要）")
+    parser.add_argument(
+        "--mcp",
+        action="store_true",
+        help="第5回: ツールを MCP サーバー（app/mcp_servers.json）から受け取る",
+    )
+    parser.add_argument(
+        "--list-tools",
+        action="store_true",
+        help="モデルに見えるツール一覧を表示して終了する（APIキー不要）",
+    )
     args = parser.parse_args()
 
     target = build_mcp_agent() if args.mcp else agent
