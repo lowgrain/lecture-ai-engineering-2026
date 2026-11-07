@@ -6,6 +6,7 @@
 
 import json
 import random
+from datetime import datetime
 from functools import cache
 from pathlib import Path
 
@@ -107,3 +108,24 @@ def make_quiz(lecture: int) -> str:
         },
         ensure_ascii=False,
     )
+
+
+def save_learning_log(content: str) -> str:
+    """学習した内容を learning_log/ フォルダに保存する。
+
+    利用者が学習内容の保存を依頼したときに使う。
+    ファイルへの書き込みを伴うため、実行前に利用者の承認が必要。
+    """
+    if not content.strip():
+        return "保存する内容が空です。"
+
+    log_dir = Path(__file__).resolve().parent.parent / "learning_log"
+    log_dir.mkdir(exist_ok=True)
+
+    log_file = log_dir / "learning_log.md"
+    timestamp = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
+
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(f"## {timestamp}\n\n{content.strip()}\n\n")
+
+    return "学習記録を learning_log/learning_log.md に保存しました。"
